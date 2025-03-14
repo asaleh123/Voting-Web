@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voting System</title>
+    <title>Voting Website</title>
 </head>
 <body>
 
-    <h1>Voting System</h1>
+    <h1>Vote Using Your Email</h1>
 
     <!-- Registration Form -->
     <form id="registerForm">
@@ -51,17 +51,11 @@
         <button type="button" onclick="logoutUser()">Logout</button>
     </form>
 
-    <br>
-
-    <!-- Winner Section -->
-    <button onclick="determineWinner()">Get Winner</button>
-    <h2 id="winner"></h2>
-
     <script type="module">
         // Import Firebase Modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-        import { getFirestore, collection, query, where, getCountFromServer, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
         // Firebase Configuration
         const firebaseConfig = {
@@ -159,32 +153,6 @@
             window.location.reload();
         }
 
-        // Function to Count Votes for Each Option
-        async function countVotes(option) {
-            const votesRef = collection(db, "votes");
-            const q = query(votesRef, where("vote", "==", option));
-            const snapshot = await getCountFromServer(q);
-            return snapshot.data().count;
-        }
-
-        // Function to Determine the Winner
-        async function determineWinner() {
-            const options = ["option1", "option2", "option3"]; // List of vote options
-            let maxVotes = 0;
-            let winner = "No votes yet!";
-
-            for (const option of options) {
-                const voteCount = await countVotes(option);
-                console.log(${option}: ${voteCount} votes);
-                if (voteCount > maxVotes) {
-                    maxVotes = voteCount;
-                    winner = option;
-                }
-            }
-
-            document.getElementById("winner").innerText = Winner: ${winner} with ${maxVotes} votes!;
-        }
-
         // Function to Logout
         async function logoutUser() {
             await signOut(auth);
@@ -196,9 +164,9 @@
         window.registerUser = registerUser;
         window.signInUser = signInUser;
         window.submitVote = submitVote;
-        window.determineWinner = determineWinner;
         window.logoutUser = logoutUser;
     </script>
 
 </body>
 </html>
+

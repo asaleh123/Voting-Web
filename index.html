@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voting Website</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 </head>
 <body>
 
     <h1>Vote Using Your Email</h1>
-
-    <!-- Registration Form -->
+    
+    <!-- Register/Login Form -->
     <form id="registerForm">
-        <h2>Register</h2>
-        <label for="email">Email:</label>
+        <label for="email">Your Email:</label>
         <input type="email" id="email" required><br><br>
 
-        <label for="password">Password:</label>
+        <label for="password">Set a Password:</label>
         <input type="password" id="password" required><br><br>
 
         <button type="button" onclick="registerUser()">Register & Verify Email</button>
@@ -23,21 +25,7 @@
 
     <br>
 
-    <!-- Sign-In Form -->
-    <form id="loginForm">
-        <h2>Sign In</h2>
-        <label for="loginEmail">Email:</label>
-        <input type="email" id="loginEmail" required><br><br>
-
-        <label for="loginPassword">Password:</label>
-        <input type="password" id="loginPassword" required><br><br>
-
-        <button type="button" onclick="signInUser()">Sign In</button>
-    </form>
-
-    <br>
-
-    <!-- Voting Form (Hidden Until Verified & Signed In) -->
+    <!-- Voting Form (Hidden Until Verified) -->
     <form id="voteForm" style="display: none;">
         <h2>Vote Now</h2>
         <label for="vote">Choose your option:</label>
@@ -48,15 +36,9 @@
         </select><br><br>
 
         <button type="button" onclick="submitVote()">Submit Vote</button>
-        <button type="button" onclick="logoutUser()">Logout</button>
     </form>
 
-    <script type="module">
-        // Import Firebase Modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-
+    <script>
         // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDq25s4TJM5ak_Pxc6wmlS_C_gsw8cXjHw",
@@ -69,104 +51,75 @@
         };
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        firebase.initializeApp(firebaseConfig);
 
-        // Function to Register User and Send Email Verification
-        async function registerUser() {
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
+        // Wait for Firebase to be initialized before using auth and db
+        document.addEventListener("DOMContentLoaded", () => {
+            const auth = firebase.auth();
+            const db = firebase.firestore();
 
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
+            async function registerUser() {
+                const email = document.getElementById("email").value;
+                const password = document.getElementById("password").value;
 
-                await sendEmailVerification(user);
-                alert("Verification email sent! Please verify your email before signing in.");
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const user = userCredential.user;
 
-            } catch (error) {
-                alert(error.message);
+                    // Send email verification
+                    await user.sendEmailVerification();
+                    alert("Verification email sent! Please verify your email and refresh this page.");
+
+                } catch (error) {
+                    alert(error.message);
+                }
             }
-        }
 
-        // Function to Sign In User
-        async function signInUser() {
-            const email = document.getElementById("loginEmail").value;
-            const password = document.getElementById("loginPassword").value;
+            // Check if user is verified before allowing voting
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    if (user.emailVerified) {
+                        document.getElementById("voteForm").style.display = "block";
+                    } else {
+                        alert("Please verify your email first.");
+                        auth.signOut();
+                    }
+                }
+            });
 
-            try {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-
-                if (!user.emailVerified) {
-                    alert("Please verify your email before signing in.");
-                    await signOut(auth);
+            async function submitVote() {
+                const user = auth.currentUser;
+                if (!user || !user.emailVerified) {
+                    alert("You must verify your email before voting.");
                     return;
                 }
 
-                alert("Sign-In successful! You can now vote.");
-                document.getElementById("voteForm").style.display = "block";
+                const email = user.email;
+                const vote = document.getElementById("vote").value;
 
-            } catch (error) {
-                alert(error.message);
-            }
-        }
+                // Check if the user has already voted
+                const docRef = db.collection("votes").doc(email);
+                const doc = await docRef.get();
 
-        // Check if User is Verified Before Showing the Vote Form
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                if (user.emailVerified) {
-                    document.getElementById("voteForm").style.display = "block";
-                } else {
-                    alert("Please verify your email before voting.");
-                    await signOut(auth);
+                if (doc.exists) {
+                    alert("You have already voted!");
+                    return;
                 }
+
+                // Store the vote
+                await docRef.set({ email, vote });
+
+                alert("Vote submitted successfully!");
+                auth.signOut();
+                window.location.reload();
             }
+
+            // Attach functions to window so they are accessible in HTML
+            window.registerUser = registerUser;
+            window.submitVote = submitVote;
         });
 
-        // Function to Submit Vote
-        async function submitVote() {
-            const user = auth.currentUser;
-            if (!user || !user.emailVerified) {
-                alert("You must verify your email before voting.");
-                return;
-            }
-
-            const email = user.email;
-            const vote = document.getElementById("vote").value;
-
-            // Check if the user has already voted
-            const voteRef = doc(db, "votes", email);
-            const voteDoc = await getDoc(voteRef);
-
-            if (voteDoc.exists()) {
-                alert("You have already voted!");
-                return;
-            }
-
-            // Store the vote
-            await setDoc(voteRef, { email, vote });
-
-            alert("Vote submitted successfully!");
-            await signOut(auth);
-            window.location.reload();
-        }
-
-        // Function to Logout
-        async function logoutUser() {
-            await signOut(auth);
-            alert("You have been logged out.");
-            window.location.reload();
-        }
-
-        // Attach functions to window so they are accessible in HTML
-        window.registerUser = registerUser;
-        window.signInUser = signInUser;
-        window.submitVote = submitVote;
-        window.logoutUser = logoutUser;
     </script>
 
 </body>
 </html>
-

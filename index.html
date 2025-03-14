@@ -8,52 +8,77 @@
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            background: linear-gradient(to right, #6a11cb, #2575fc);
             color: white;
         }
         .hidden {
             display: none;
         }
         form {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
             width: 50%;
             margin: auto;
             margin-bottom: 20px;
+            backdrop-filter: blur(5px);
         }
         button {
-            background-color: #4CAF50;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
             color: white;
-            padding: 10px 15px;
+            padding: 12px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            transition: transform 0.2s, background 0.3s;
         }
         button:hover {
-            background-color: #45a049;
+            transform: scale(1.05);
+            background: linear-gradient(to right, #ff512f, #dd2476);
         }
         h1, h2 {
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
         }
         select, input {
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
-            border-radius: 5px;
+            border-radius: 8px;
             border: none;
+            width: 90%;
         }
         .vote-count {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
             margin-top: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 10px;
+            background: rgba(255, 255, 255, 0.25);
+            padding: 12px;
             border-radius: 10px;
             display: inline-block;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
         }
     </style>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, getCountFromServer, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDq25s4TJM5ak_Pxc6wmlS_C_gsw8cXjHw",
+            authDomain: "voting-website-5d65c.firebaseapp.com",
+            projectId: "voting-website-5d65c",
+            storageBucket: "voting-website-5d65c.appspot.com",
+            messagingSenderId: "329997409751",
+            appId: "1:329997409751:web:f8851f8ba1324ad5d5ff92",
+            measurementId: "G-9F0VD8XJDK"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+    </script>
 </head>
 <body>
     <h1>Real-Time Voting System</h1>
@@ -87,60 +112,5 @@
     <div class="vote-count">Option 1: <span id="votesOption1">0</span> votes</div>
     <div class="vote-count">Option 2: <span id="votesOption2">0</span> votes</div>
     <div class="vote-count">Option 3: <span id="votesOption3">0</span> votes</div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-        import { getFirestore, collection, query, where, getCountFromServer, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-
-        const firebaseConfig = { 
-            apiKey: "AIzaSyDq25s4TJM5ak_Pxc6wmlS_C_gsw8cXjHw",
-            authDomain: "voting-website-5d65c.firebaseapp.com",
-            projectId: "voting-website-5d65c",
-            storageBucket: "voting-website-5d65c.appspot.com",
-            messagingSenderId: "329997409751",
-            appId: "1:329997409751:web:f8851f8ba1324ad5d5ff92",
-            measurementId: "G-9F0VD8XJDK"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        async function submitVote() {
-            const user = auth.currentUser;
-            if (!user) {
-                alert("Please sign in to vote.");
-                return;
-            }
-            
-            const voteRef = doc(db, "votes", user.email);
-            const voteDoc = await getDoc(voteRef);
-            
-            if (voteDoc.exists()) {
-                alert("You have already voted!");
-                return;
-            }
-            
-            const vote = document.getElementById("vote").value;
-            await setDoc(voteRef, { vote });
-            alert("Vote submitted successfully!");
-            await signOut(auth);
-            window.location.reload();
-        }
-        
-        function updateResults() {
-            const votesRef = collection(db, "votes");
-            onSnapshot(votesRef, (snapshot) => {
-                let counts = { option1: 0, option2: 0, option3: 0 };
-                snapshot.docs.forEach(doc => counts[doc.data().vote]++);
-                document.getElementById("votesOption1").innerText = counts.option1;
-                document.getElementById("votesOption2").innerText = counts.option2;
-                document.getElementById("votesOption3").innerText = counts.option3;
-            });
-        }
-        
-        updateResults();
-    </script>
 </body>
 </html>

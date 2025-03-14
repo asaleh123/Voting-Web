@@ -1,1 +1,149 @@
 
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Voting System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+        form {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            width: 50%;
+            margin: auto;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        h1, h2 {
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        select, input {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+        }
+        .vote-count {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Voting System</h1>
+
+    <form id="registerForm">
+        <h2>Register</h2>
+        <input type="email" id="email" placeholder="Email" required><br><br>
+        <input type="password" id="password" placeholder="Password" required><br><br>
+        <button type="button" onclick="registerUser()">Register & Verify</button>
+    </form>
+
+    <form id="loginForm">
+        <h2>Sign In</h2>
+        <input type="email" id="loginEmail" placeholder="Email" required><br><br>
+        <input type="password" id="loginPassword" placeholder="Password" required><br><br>
+        <button type="button" onclick="signInUser()">Sign In</button>
+    </form>
+
+    <form id="voteForm" class="hidden">
+        <h2>Vote Now</h2>
+        <select id="vote">
+            <option value="option1">Option 1</option>
+            <option value="option2">Option 2</option>
+            <option value="option3">Option 3</option>
+        </select><br><br>
+        <button type="button" onclick="submitVote()">Submit Vote</button>
+        <button type="button" onclick="logoutUser()">Logout</button>
+    </form>
+
+    <h2>Live Results</h2>
+    <div class="vote-count">Option 1: <span id="votesOption1">0</span> votes</div>
+    <div class="vote-count">Option 2: <span id="votesOption2">0</span> votes</div>
+    <div class="vote-count">Option 3: <span id="votesOption3">0</span> votes</div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, getCountFromServer, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDq25s4TJM5ak_Pxc6wmlS_C_gsw8cXjHw",
+            authDomain: "voting-website-5d65c.firebaseapp.com",
+            projectId: "voting-website-5d65c",
+            storageBucket: "voting-website-5d65c.appspot.com",
+            messagingSenderId: "329997409751",
+            appId: "1:329997409751:web:f8851f8ba1324ad5d5ff92",
+            measurementId: "G-9F0VD8XJDK"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        async function submitVote() {
+            const user = auth.currentUser;
+            if (!user) {
+                alert("Please sign in to vote.");
+                return;
+            }
+            
+            const voteRef = doc(db, "votes", user.email);
+            const voteDoc = await getDoc(voteRef);
+            
+            if (voteDoc.exists()) {
+                alert("You have already voted!");
+                return;
+            }
+            
+            const vote = document.getElementById("vote").value;
+            await setDoc(voteRef, { vote });
+            alert("Vote submitted successfully!");
+            await signOut(auth);
+            window.location.reload();
+        }
+        
+        function updateResults() {
+            const votesRef = collection(db, "votes");
+            onSnapshot(votesRef, (snapshot) => {
+                let counts = { option1: 0, option2: 0, option3: 0 };
+                snapshot.docs.forEach(doc => counts[doc.data().vote]++);
+                document.getElementById("votesOption1").innerText = counts.option1;
+                document.getElementById("votesOption2").innerText = counts.option2;
+                document.getElementById("votesOption3").innerText = counts.option3;
+            });
+        }
+        
+        updateResults();
+    </script>
+</body>
+</html>

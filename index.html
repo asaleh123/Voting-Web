@@ -78,25 +78,78 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+
+        async function registerUser() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                await sendEmailVerification(user);
+                alert("Verification email sent! Please verify your email before signing in.");
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function signInUser() {
+            const email = document.getElementById("loginEmail").value;
+            const password = document.getElementById("loginPassword").value;
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                if (!user.emailVerified) {
+                    alert("Please verify your email before signing in.");
+                    await signOut(auth);
+                    return;
+                }
+                alert("Sign-In successful! You can now vote.");
+                document.getElementById("voteForm").style.display = "block";
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function submitVote() {
+            const user = auth.currentUser;
+            if (!user || !user.emailVerified) {
+                alert("You must verify your email before voting.");
+                return;
+            }
+
+            const email = user.email;
+            const vote = document.getElementById("vote").value;
+            const voteRef = doc(db, "votes", email);
+            const voteDoc = await getDoc(voteRef);
+
+            if (voteDoc.exists()) {
+                alert("You have already voted!");
+                return;
+            }
+
+            await setDoc(voteRef, { vote });
+            alert("Vote submitted successfully!");
+            await signOut(auth);
+            window.location.reload();
+        }
     </script>
 </head>
 <body>
     <h1>Real-Time Voting System</h1>
-
     <form id="registerForm">
         <h2>Register</h2>
         <input type="email" id="email" placeholder="Email" required><br><br>
         <input type="password" id="password" placeholder="Password" required><br><br>
         <button type="button" onclick="registerUser()">Register & Verify</button>
     </form>
-
     <form id="loginForm">
         <h2>Sign In</h2>
         <input type="email" id="loginEmail" placeholder="Email" required><br><br>
         <input type="password" id="loginPassword" placeholder="Password" required><br><br>
         <button type="button" onclick="signInUser()">Sign In</button>
     </form>
-
     <form id="voteForm" class="hidden">
         <h2>Vote Now</h2>
         <select id="vote">
@@ -107,10 +160,5 @@
         <button type="button" onclick="submitVote()">Submit Vote</button>
         <button type="button" onclick="logoutUser()">Logout</button>
     </form>
-
-    <h2>Live Results</h2>
-    <div class="vote-count">Option 1: <span id="votesOption1">0</span> votes</div>
-    <div class="vote-count">Option 2: <span id="votesOption2">0</span> votes</div>
-    <div class="vote-count">Option 3: <span id="votesOption3">0</span> votes</div>
 </body>
 </html>
